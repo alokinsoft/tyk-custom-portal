@@ -4,9 +4,14 @@
 require 'excon'
 require 'sinatra'
 require 'bcrypt'
+require 'uri'
+require 'cgi'
 
 # ==== Sinatra configuration ====
 enable :sessions
+
+set :bind, '0.0.0.0'
+enable :show_exceptions, :raise_errors, :dump_errors
 
 if ENV['TYK_PORTAL_PORT'] != ""
     set :port, ENV['TYK_PORTAL_PORT']
@@ -26,7 +31,6 @@ Tyk = Excon.new(dashboardURL, :persistent => true, :headers => { "authorization"
 before do
     if session[:developer]
         resp = Tyk.get(path: "/api/portal/developers/email/#{session[:developer]}")
-
         if resp.status == 200
             @developer = JSON.parse(resp.body)
         else
@@ -217,7 +221,7 @@ post '/register' do
         @error = resp.body
         erb :register
     else
-        session[:developer] = params[:email]
+        session[:developer] = CGI.escape(params[:email])
         redirect "/"
     end
 end
@@ -239,13 +243,13 @@ get '/login' do
 end
 
 post '/login' do
-    resp = Tyk.post(path: "/api/portal/developers/verify_credentials", body: { username: params[:email], password: params[:password] }.to_json)
+    resp = Tyk.post(path: "/api/portal/developers/verify_credentials", body: { username: CGI.escape(params[:email]), password: params[:password] }.to_json)
     if false
         @error = "Password not match"
         return erb :login
     end
 
-    session[:developer] = params[:email]
+    session[:developer] = CGI.escape(params[:email])
     redirect "/"
 end
 
